@@ -1,38 +1,17 @@
 import streamlit as st
 import pandas as pd
-import time
-import random
+import requests
+import json
 import plotly.express as px
 import matplotlib
-matplotlib.use('Agg') 
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 # --- 1. SETUP ---
 analyzer = SentimentIntensityAnalyzer()
-
-def get_driver():
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-gpu")
-    user_agents = [
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-    ]
-    chrome_options.add_argument(f"user-agent={random.choice(user_agents)}")
-    try:
-        service = Service("/usr/bin/chromedriver")
-        return webdriver.Chrome(service=service, options=chrome_options)
-    except:
-        return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+SERPER_API_KEY = st.secrets["SERPER_KEY"]
 
 def analyze_text(text):
     score = analyzer.polarity_scores(text)['compound']
@@ -40,33 +19,33 @@ def analyze_text(text):
     elif score >= 0.05: return "🟢 LOW", score
     else: return "🟡 NEUTRAL", score
 
-# --- 2. ROBUST SEARCH FUNCTION ---
-def get_vendor_headlines(driver, vendor_name):
-    # Set a timeout to prevent the app from hanging on slow loads
-    driver.set_page_load_timeout(20) 
+# --- 2. THE NEW SEARCH FUNCTION (NO SELENIUM!) ---
+def get_vendor_data_api(vendor_name):
+    url = "https://serper.dev"
     
-    search_query = f"{vendor_name} complaints"
-    url = f"https://google.com{search_query}&tbm=nws"
-    
+    # We ask for news and general results for "vendor name complaints"
+    payload = json.dumps({
+        "q": f"{vendor_name} complaints reviews",
+        "num": 5
+    })
+    headers = {
+        'X-API-KEY': SERPER_API_KEY,
+        'Content-Type': 'application/json'
+    }
+
     try:
-        driver.get(url)
-        time.sleep(4) # Gentle wait for JavaScript and results
+        response = requests.request("POST", url, headers=headers, data=payload)
+        data = response.json()
         
-        headlines = driver.find_elements(By.TAG_NAME, "h3")
+        # We grab snippets from the search results
+        snippets = []
+        if 'organic' in data:
+            for result in data['organic'][:3]:
+                snippets.append(result.get('snippet', ''))
         
-        top_headlines = []
-        for h in headlines[:3]:
-            if h.text and h.text.strip():
-                top_headlines.append(h.text)
-                
-        if top_headlines:
-            return " | ".join(top_headlines)
-        else:
-            return "No specific news headlines found."
-            
+        return " | ".join(snippets) if snippets else "No public data found."
     except Exception as e:
-        # Graceful failure: return error snippet instead of crashing
-        return f"Access limited or Timeout (Error: {str(e)[:40]}...)"
+        return f"API Error: {str(e)}"
 
 # --- 3. UI ---
 st.set_page_config(page_title="Reputation Guard Pro", layout="wide")
@@ -84,34 +63,27 @@ else:
     df = pd.read_csv(uploaded_file)
 
 # --- 4. EXECUTION ---
-if st.button("Launch Live Reputation Audit") and not df.empty:
+if st.button("Launch Professional Reputation Audit") and not df.empty:
     results = []
     all_text_for_cloud = ""
-    progress_bar = st.progress(0)
-    status_text = st.empty()
     
-    driver = get_driver()
-    
-    for index, row in df.iterrows():
-        name = row['vendor_name']
-        wait_time = random.uniform(5, 8) # Slower for better stealth
-        status_text.text(f"Auditing: {name}... (Estimated wait: {round(wait_time, 1)}s)")
-        time.sleep(wait_time)
-        
-        real_text = get_vendor_headlines(driver, name)
-        all_text_for_cloud += " " + real_text
-        
-        risk_label, score = analyze_text(real_text)
-        results.append({
-            "Vendor": name, 
-            "Risk": risk_label, 
-            "Score": score, 
-            "Live Headlines": real_text
-        })
-        
-        progress_bar.progress((index + 1) / len(df))
-    
-    driver.quit()
+    # Notice: No 'driver' needed anymore! 
+    # It runs much faster so we don't need long progress bars.
+    with st.spinner("Analyzing vendor panel..."):
+        for index, row in df.iterrows():
+            name = row['vendor_name']
+            
+            # API call is near-instant
+            real_text = get_vendor_data_api(name)
+            all_text_for_cloud += " " + real_text
+            
+            risk_label, score = analyze_text(real_text)
+            results.append({
+                "Vendor": name, 
+                "Risk": risk_label, 
+                "Score": score, 
+                "Search Snippets": real_text
+            })
     
     # --- 5. RESULTS ---
     st.success("Audit Complete!")
@@ -132,7 +104,7 @@ if st.button("Launch Live Reputation Audit") and not df.empty:
                      color_discrete_map={'🔴 HIGH':'#ff4b4b', '🟢 LOW':'#00cc96', '🟡 NEUTRAL':'#636efa'})
         st.plotly_chart(fig_pie, use_container_width=True)
 
-        if all_text_for_cloud.strip() and "No specific" not in all_text_for_cloud:
+        if all_text_for_cloud.strip():
             st.subheader("Key Risk Keywords")
             wc = WordCloud(width=400, height=200, background_color='white', colormap='Reds').generate(all_text_for_cloud)
             fig_wc, ax = plt.subplots()
@@ -146,5 +118,3 @@ if st.button("Launch Live Reputation Audit") and not df.empty:
 
     csv_report = res_df.to_csv(index=False).encode('utf-8')
     st.download_button("📩 Download Compliance Audit Report", data=csv_report, file_name="reputation_audit_report.csv")
-
-st.sidebar.info("Compliance Tip: High-risk vendors should be flagged for manual legal review.")
