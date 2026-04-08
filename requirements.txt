@@ -1,7 +1,8 @@
 streamlit
 pandas
-requests
-beautifulsoup4
-vaderSentiment
 selenium
 webdriver-manager
+vaderSentiment
+plotly
+requests
+beautifulsoup4
