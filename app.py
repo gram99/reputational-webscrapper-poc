@@ -3,6 +3,8 @@ import pandas as pd
 import time
 import random
 import plotly.express as px
+import matplotlib
+matplotlib.use('Agg') # Stable backend for cloud servers
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
 from selenium import webdriver
@@ -38,7 +40,7 @@ def analyze_text(text):
     elif score >= 0.05: return "🟢 LOW", score
     else: return "🟡 NEUTRAL", score
 
-# --- 2. SEARCH FUNCTION ---
+# --- 2. SEARCH FUNCTION (REWRITTEN FOR STABILITY) ---
 def get_vendor_headlines(driver, vendor_name):
     search_query = f"{vendor_name} complaints"
     url = f"https://google.com{search_query}&tbm=nws"
@@ -48,9 +50,17 @@ def get_vendor_headlines(driver, vendor_name):
     
     try:
         headlines = driver.find_elements(By.TAG_NAME, "h3")
-        # THIS IS THE SPECIFIC LINE THAT WAS CAUSING THE ERROR
-        top_headlines = if h.text.strip()]
-        return " | ".join(top_headlines) if top_headlines else "No significant headlines found."
+        
+        # Expanded logic to prevent truncation errors
+        top_headlines = []
+        for h in headlines[:3]:
+            if h.text and h.text.strip():
+                top_headlines.append(h.text)
+                
+        if len(top_headlines) > 0:
+            return " | ".join(top_headlines)
+        else:
+            return "No significant headlines found."
     except Exception as e:
         return f"Search failed: {str(e)}"
 
@@ -114,15 +124,15 @@ if st.button("Launch Live Reputation Audit") and not df.empty:
     
     with col_chart:
         st.subheader("Risk Distribution")
-        fig = px.pie(res_df, names='Risk', color='Risk',
+        fig_pie = px.pie(res_df, names='Risk', color='Risk',
                      color_discrete_map={'🔴 HIGH':'#ff4b4b', '🟢 LOW':'#00cc96', '🟡 NEUTRAL':'#636efa'})
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig_pie, use_container_width=True)
 
         if all_text_for_cloud.strip():
             st.subheader("Key Risk Keywords")
-            wordcloud = WordCloud(width=400, height=200, background_color='white', colormap='Reds').generate(all_text_for_cloud)
+            wc = WordCloud(width=400, height=200, background_color='white', colormap='Reds').generate(all_text_for_cloud)
             fig_wc, ax = plt.subplots()
-            ax.imshow(wordcloud, interpolation='bilinear')
+            ax.imshow(wc, interpolation='bilinear')
             ax.axis("off")
             st.pyplot(fig_wc)
 
