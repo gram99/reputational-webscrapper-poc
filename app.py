@@ -18,10 +18,7 @@ def get_driver():
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
-    
-    # NEW STEALTH FLAGS: These make the browser look like a standard desktop window
     chrome_options.add_argument("--window-size=1920,1080")
-    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
     chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36")
     
     try:
@@ -43,6 +40,7 @@ st.title("Reputational Risk Scraper POC 🛡️")
 st.sidebar.header("Data Upload")
 uploaded_file = st.sidebar.file_uploader("Upload your Vendor CSV", type=["csv"])
 
+# Logic to load the CSV
 if not uploaded_file:
     try:
         df = pd.read_csv("vendors.csv")
@@ -62,40 +60,42 @@ if st.button("Run Scraper") and not df.empty:
         name = row['vendor_name']
         st.write(f"🔍 Auditing: **{name}**...")
         
-        # Using DuckDuckGo instead of Google for the POC
-        # It is MUCH friendlier to scrapers and rarely blocks cloud IPs.
+        # We use a direct DuckDuckGo search which is easier for cloud servers
         search_url = f"https://duckduckgo.com{name.replace(' ', '+')}+complaints"
         
         try:
             driver.get(search_url)
-            time.sleep(random.uniform(5, 8)) # Longer wait for cloud stability
+            time.sleep(random.uniform(3, 5)) 
             
-            page_text = driver.title
-            risk_label, score = analyze_reputation(page_text)
+            # Get the page title
+            page_info = driver.title
             
+            risk_label, score = analyze_reputation(page_info)
             results.append({
                 "Vendor": name, 
                 "Risk Level": risk_label, 
                 "Score": score, 
-                "Findings": f"Public Search: {page_text}"
+                "Findings": f"Public Record: {page_info}"
             })
         except Exception as e:
             results.append({
                 "Vendor": name, 
                 "Risk Level": "⚪ ERROR", 
                 "Score": 0, 
-                "Findings": "Cloud Blocked Connection"
+                "Findings": "Connection Reset by Server"
             })
         
         progress_bar.progress((index + 1) / len(df))
     
     driver.quit()
     
-    # --- 4. RESULTS ---
+    # --- 4. RESULTS (FIXED COLUMNS) ---
     st.success("Scrape Complete!")
     res_df = pd.DataFrame(results)
 
-    col1, col2 = st.columns()
+    # Specify '2' in st.columns to fix the TypeError
+    col1, col2 = st.columns(2) 
+    
     with col1:
         st.subheader("Risk Mix")
         fig = px.pie(res_df, names='Risk Level', color='Risk Level',
