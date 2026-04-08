@@ -3,3 +3,4 @@ pandas
 vaderSentiment
 plotly
 requests
+beautifulsoup4
