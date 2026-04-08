@@ -4,7 +4,7 @@ import time
 import random
 import plotly.express as px
 import matplotlib
-matplotlib.use('Agg') # Stable backend for cloud servers
+matplotlib.use('Agg') 
 import matplotlib.pyplot as plt
 from wordcloud import WordCloud
 from selenium import webdriver
@@ -24,8 +24,8 @@ def get_driver():
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
     user_agents = [
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
     ]
     chrome_options.add_argument(f"user-agent={random.choice(user_agents)}")
     try:
@@ -40,29 +40,33 @@ def analyze_text(text):
     elif score >= 0.05: return "🟢 LOW", score
     else: return "🟡 NEUTRAL", score
 
-# --- 2. SEARCH FUNCTION (REWRITTEN FOR STABILITY) ---
+# --- 2. ROBUST SEARCH FUNCTION ---
 def get_vendor_headlines(driver, vendor_name):
+    # Set a timeout to prevent the app from hanging on slow loads
+    driver.set_page_load_timeout(20) 
+    
     search_query = f"{vendor_name} complaints"
     url = f"https://google.com{search_query}&tbm=nws"
     
-    driver.get(url)
-    time.sleep(2) 
-    
     try:
+        driver.get(url)
+        time.sleep(4) # Gentle wait for JavaScript and results
+        
         headlines = driver.find_elements(By.TAG_NAME, "h3")
         
-        # Expanded logic to prevent truncation errors
         top_headlines = []
         for h in headlines[:3]:
             if h.text and h.text.strip():
                 top_headlines.append(h.text)
                 
-        if len(top_headlines) > 0:
+        if top_headlines:
             return " | ".join(top_headlines)
         else:
-            return "No significant headlines found."
+            return "No specific news headlines found."
+            
     except Exception as e:
-        return f"Search failed: {str(e)}"
+        # Graceful failure: return error snippet instead of crashing
+        return f"Access limited or Timeout (Error: {str(e)[:40]}...)"
 
 # --- 3. UI ---
 st.set_page_config(page_title="Reputation Guard Pro", layout="wide")
@@ -90,8 +94,8 @@ if st.button("Launch Live Reputation Audit") and not df.empty:
     
     for index, row in df.iterrows():
         name = row['vendor_name']
-        wait_time = random.uniform(4, 7)
-        status_text.text(f"Searching web for: {name}...")
+        wait_time = random.uniform(5, 8) # Slower for better stealth
+        status_text.text(f"Auditing: {name}... (Estimated wait: {round(wait_time, 1)}s)")
         time.sleep(wait_time)
         
         real_text = get_vendor_headlines(driver, name)
@@ -114,21 +118,21 @@ if st.button("Launch Live Reputation Audit") and not df.empty:
     res_df = pd.DataFrame(results)
 
     c1, c2, c3 = st.columns(3)
-    c1.metric("Total Vendors", len(res_df))
-    c2.metric("High Risk Identified", len(res_df[res_df['Risk'] == "🔴 HIGH"]))
-    c3.metric("Average Sentiment", round(res_df['Score'].mean(), 2))
+    c1.metric("Total Vendors Checked", len(res_df))
+    c2.metric("High Risk Flags", len(res_df[res_df['Risk'] == "🔴 HIGH"]))
+    c3.metric("Avg Sentiment Score", round(res_df['Score'].mean(), 2))
 
     st.divider()
 
     col_chart, col_table = st.columns([1, 1.5])
     
     with col_chart:
-        st.subheader("Risk Distribution")
+        st.subheader("Reputation Distribution")
         fig_pie = px.pie(res_df, names='Risk', color='Risk',
                      color_discrete_map={'🔴 HIGH':'#ff4b4b', '🟢 LOW':'#00cc96', '🟡 NEUTRAL':'#636efa'})
         st.plotly_chart(fig_pie, use_container_width=True)
 
-        if all_text_for_cloud.strip():
+        if all_text_for_cloud.strip() and "No specific" not in all_text_for_cloud:
             st.subheader("Key Risk Keywords")
             wc = WordCloud(width=400, height=200, background_color='white', colormap='Reds').generate(all_text_for_cloud)
             fig_wc, ax = plt.subplots()
@@ -137,8 +141,10 @@ if st.button("Launch Live Reputation Audit") and not df.empty:
             st.pyplot(fig_wc)
 
     with table_col:
-        st.subheader("Detailed Findings")
+        st.subheader("Findings & Live Sources")
         st.dataframe(res_df, use_container_width=True)
 
     csv_report = res_df.to_csv(index=False).encode('utf-8')
-    st.download_button("📩 Download Regulatory Compliance Report", data=csv_report, file_name="vendor_risk_audit.csv")
+    st.download_button("📩 Download Compliance Audit Report", data=csv_report, file_name="reputation_audit_report.csv")
+
+st.sidebar.info("Compliance Tip: High-risk vendors should be flagged for manual legal review.")
