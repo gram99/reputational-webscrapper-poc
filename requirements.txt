@@ -3,7 +3,3 @@ pandas
 vaderSentiment
 plotly
 requests
-wordcloud
-matplotlib
-selenium
-webdriver-manager
