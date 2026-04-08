@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import time
 import random
-import plotly.express as px  # <--- New for Charts
+import plotly.express as px
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
@@ -17,12 +17,15 @@ def get_driver():
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    user_agents = [
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
-    ]
-    chrome_options.add_argument(f"user-agent={random.choice(user_agents)}")
-    return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    chrome_options.add_argument("--disable-gpu") 
+    
+    # Updated: This points directly to the driver installed via packages.txt
+    # and falls back to ChromeDriverManager if running locally.
+    try:
+        service = Service("/usr/bin/chromedriver")
+        return webdriver.Chrome(service=service, options=chrome_options)
+    except:
+        return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
 def analyze_text(text):
     score = analyzer.polarity_scores(text)['compound']
@@ -59,7 +62,7 @@ if st.button("Launch Comprehensive Audit") and not df.empty:
         status_text.text(f"Scanning: {name}...")
         time.sleep(wait_time)
         
-        # Simulated finding - replace with real scraper logic
+        # Simulated finding
         simulated_text = random.choice([
             f"Severe consumer complaints found for {name} regarding unethical billing.",
             f"{name} maintains professional standards and positive consumer feedback.",
@@ -76,7 +79,6 @@ if st.button("Launch Comprehensive Audit") and not df.empty:
     st.success("Audit Complete!")
     res_df = pd.DataFrame(results)
 
-    # Dashboard Metrics
     c1, c2, c3 = st.columns(3)
     c1.metric("Total Vendors", len(res_df))
     c2.metric("High Risk Identified", len(res_df[res_df['Risk'] == "🔴 HIGH"]))
@@ -84,7 +86,6 @@ if st.button("Launch Comprehensive Audit") and not df.empty:
 
     st.divider()
 
-    # Risk Distribution Chart
     chart_col, table_col = st.columns([1, 1.5])
     
     with chart_col:
@@ -97,7 +98,6 @@ if st.button("Launch Comprehensive Audit") and not df.empty:
         st.subheader("Detailed Findings")
         st.dataframe(res_df, use_container_width=True)
 
-    # Download
     csv_report = res_df.to_csv(index=False).encode('utf-8')
     st.download_button("📩 Download Regulatory Compliance Report", data=csv_report, file_name="vendor_risk_audit.csv")
 
