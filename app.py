@@ -12,7 +12,7 @@ from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-# --- 1. SETUP & ANALYSIS LOGIC ---
+# --- 1. SETUP ---
 analyzer = SentimentIntensityAnalyzer()
 
 def get_driver():
@@ -40,7 +40,6 @@ def analyze_text(text):
 
 # --- 2. FIXED SEARCH FUNCTION ---
 def get_vendor_headlines(driver, vendor_name):
-    """Real Search: Pulls top headlines from Google News for a vendor."""
     search_query = f"{vendor_name} complaints"
     url = f"https://google.com{search_query}&tbm=nws"
     
@@ -49,13 +48,14 @@ def get_vendor_headlines(driver, vendor_name):
     
     try:
         headlines = driver.find_elements(By.TAG_NAME, "h3")
-        # FIXED LINE BELOW: Corrected list comprehension syntax
+        # --- FIXED SYNTAX HERE ---
         top_headlines = if h.text.strip()]
-        return " | ".join(top_headlines) if top_headlines else "No specific news found."
+        # -------------------------
+        return " | ".join(top_headlines) if top_headlines else "No significant headlines found."
     except Exception as e:
         return f"Search failed: {str(e)}"
 
-# --- 3. UI & DATA HANDLING ---
+# --- 3. UI ---
 st.set_page_config(page_title="Reputation Guard Pro", layout="wide")
 st.title("Reputational Risk Executive Dashboard 🛡️")
 
@@ -100,11 +100,10 @@ if st.button("Launch Live Reputation Audit") and not df.empty:
     
     driver.quit()
     
-    # --- 5. RESULTS & VISUALS ---
+    # --- 5. RESULTS ---
     st.success("Audit Complete!")
     res_df = pd.DataFrame(results)
 
-    # Top Metrics
     c1, c2, c3 = st.columns(3)
     c1.metric("Total Vendors", len(res_df))
     c2.metric("High Risk Identified", len(res_df[res_df['Risk'] == "🔴 HIGH"]))
@@ -112,7 +111,6 @@ if st.button("Launch Live Reputation Audit") and not df.empty:
 
     st.divider()
 
-    # Layout: Chart, Table, and Word Cloud
     col_chart, col_table = st.columns([1, 1.5])
     
     with col_chart:
@@ -121,7 +119,6 @@ if st.button("Launch Live Reputation Audit") and not df.empty:
                      color_discrete_map={'🔴 HIGH':'#ff4b4b', '🟢 LOW':'#00cc96', '🟡 NEUTRAL':'#636efa'})
         st.plotly_chart(fig, use_container_width=True)
 
-        # WORD CLOUD SECTION
         if all_text_for_cloud.strip():
             st.subheader("Key Risk Keywords")
             wordcloud = WordCloud(width=400, height=200, background_color='white', colormap='Reds').generate(all_text_for_cloud)
