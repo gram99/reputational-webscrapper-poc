@@ -9,7 +9,7 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-# --- 1. SETUP & ANALYSIS LOGIC ---
+# --- 1. SETUP & ANALYSIS ---
 analyzer = SentimentIntensityAnalyzer()
 
 def get_driver():
@@ -18,41 +18,43 @@ def get_driver():
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
-    
-    user_agents = [
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36"
-    ]
-    chrome_options.add_argument(f"user-agent={random.choice(user_agents)}")
-    
+    chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36")
     try:
         service = Service("/usr/bin/chromedriver")
         return webdriver.Chrome(service=service, options=chrome_options)
     except Exception:
         return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
-def analyze_text(text):
+def get_recovery_metrics(text):
     score = analyzer.polarity_scores(text)['compound']
-    status = "🔴 HIGH" if score <= -0.05 else "🟢 LOW" if score >= 0.05 else "🟡 NEUTRAL"
-    return status, score
+    if score <= -0.05:
+        return "🔴 HIGH RISK", score, "Terminate/Audit"
+    elif score >= 0.05:
+        return "🟢 LOW RISK", score, "Expand/Onboard"
+    else:
+        return "🟡 CAUTION", score, "Monitor/Restructure"
 
-# --- 2. USER INTERFACE ---
-st.set_page_config(page_title="Reputational Risk Auditor", layout="wide")
-st.title("Bulk Reputational Risk Auditor 📋")
+# --- 2. UI ---
+st.set_page_config(page_title="Recovery Ops - Reputation Audit", layout="wide")
+st.title("Recovery Operations: Law Firm Reputation Auditor 🛡️")
+st.markdown("Automated risk assessment for evaluating current vendor panels and identifying potential replacements.")
 
-st.sidebar.header("Data Management")
-uploaded_file = st.sidebar.file_uploader("Upload Vendor CSV", type=["csv"])
+st.sidebar.header("Upload Vendor List")
+uploaded_file = st.sidebar.file_uploader("Upload CSV (Required columns: vendor_name, city, state)", type=["csv"])
 
 if not uploaded_file:
-    try:
-        df = pd.read_csv("vendors.csv")
-    except:
-        df = pd.DataFrame(columns=["vendor_name"])
+    # Creating a dummy template for first-time use
+    df = pd.DataFrame({
+        "vendor_name": ["Weltman Weinberg & Reis", "Frederick J. Hanna & Assoc", "Zwicker & Associates"],
+        "city": ["Cleveland", "Marietta", "Andover"],
+        "state": ["OH", "GA", "MA"]
+    })
+    st.sidebar.info("Using sample data. Upload a custom CSV for full panel audit.")
 else:
     df = pd.read_csv(uploaded_file)
 
-# --- 3. EXECUTION ---
-if st.button("Start Bulk Audit") and not df.empty:
+# --- 3. AUDIT ENGINE ---
+if st.button("Start Vendor Panel Audit") and not df.empty:
     results = []
     progress_bar = st.progress(0)
     status_text = st.empty()
@@ -60,52 +62,59 @@ if st.button("Start Bulk Audit") and not df.empty:
     driver = get_driver()
     
     for index, row in df.iterrows():
-        name = row['vendor_name']
-        wait_time = random.uniform(3, 5)
-        status_text.text(f"Auditing: {name} ({index+1}/{len(df)})")
-        time.sleep(wait_time)
+        name, city, state = row['vendor_name'], row['city'], row['state']
+        status_text.text(f"Auditing: {name} ({city}, {state})")
         
-        # Note: Replace this with driver.get() for live scraping later
-        simulated_text = f"Public report for {name}: Recurring consumer feedback mentions lack of clarity and aggressive tactics."
+        # Specific search string for Recovery Managers
+        search_query = f"{name} {city} {state} collection complaints"
         
-        risk_label, score = analyze_text(simulated_text)
-        results.append({
-            "Vendor": name, 
-            "Risk Level": risk_label, 
-            "Sentiment Score": score, 
-            "Snippet Found": simulated_text
-        })
+        try:
+            driver.get(f"https://google.com{search_query.replace(' ', '+')}")
+            time.sleep(random.uniform(4, 7))
+            
+            page_title = driver.title
+            risk_label, score, rec = get_recovery_metrics(page_title)
+            
+            results.append({
+                "Firm Name": name,
+                "Location": f"{city}, {state}",
+                "Reputation Status": risk_label,
+                "Risk Score": score,
+                "Ops Recommendation": rec,
+                "Findings": f"Public Sentiment: {page_title}"
+            })
+        except:
+            results.append({
+                "Firm Name": name, "Location": f"{city}, {state}",
+                "Reputation Status": "⚪ ERROR", "Risk Score": 0,
+                "Ops Recommendation": "Retry Connection", "Findings": "Timeout"
+            })
         
         progress_bar.progress((index + 1) / len(df))
     
     driver.quit()
     
-    # --- 4. RESULTS DISPLAY ---
-    st.success("Audit Complete!")
-    results_df = pd.DataFrame(results)
+    # --- 4. EXECUTIVE DASHBOARD ---
+    st.success("Panel Audit Complete!")
+    res_df = pd.DataFrame(results)
     
-    # Dashboard Layout
-    col1, col2 = st.columns([1, 2])
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Total Firms Checked", len(res_df))
+    c2.metric("High Reputation Risks", len(res_df[res_df['Ops Recommendation'] == "Terminate/Audit"]))
+    c3.metric("Onboarding Candidates", len(res_df[res_df['Ops Recommendation'] == "Expand/Onboard"]))
+
+    st.divider()
+
+    col_chart, col_table = st.columns([1, 2])
     
-    with col1:
-        st.subheader("Risk Distribution")
-        # Color-coded Pie Chart
-        fig = px.pie(
-            results_df, 
-            names='Risk Level', 
-            color='Risk Level',
-            color_discrete_map={
-                '🔴 HIGH': '#ff4b4b', 
-                '🟢 LOW': '#00cc96', 
-                '🟡 NEUTRAL': '#636efa'
-            }
-        )
+    with col_chart:
+        st.subheader("Contractual Risk Mix")
+        fig = px.pie(res_df, names='Reputation Status', color='Reputation Status',
+                     color_discrete_map={'🔴 HIGH RISK': '#ff4b4b', '🟢 LOW RISK': '#00cc96', '🟡 CAUTION': '#636efa'})
         st.plotly_chart(fig, use_container_width=True)
-    
-    with col2:
-        st.subheader("Detailed Audit Log")
-        # FIX: hide_index=True removes the far-left numbering
-        st.dataframe(results_df, use_container_width=True, hide_index=True)
-    
-    csv_report = results_df.to_csv(index=False).encode('utf-8')
-    st.download_button("Download Full Risk Report", csv_report, "reputation_report.csv", "text/csv")
+
+    with col_table:
+        st.subheader("Actionable Vendor Insights")
+        st.dataframe(res_df, use_container_width=True, hide_index=True)
+
+    st.download_button("Download Compliance Audit Report", res_df.to_csv(index=False), "recovery_audit_report.csv")
