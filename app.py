@@ -11,7 +11,7 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 # --- 1. SETUP ---
 analyzer = SentimentIntensityAnalyzer()
-SERPER_API_KEY = st.secrets["SERPER_KEY"]
+SERPER_API_KEY = "768f5110358df3687ff28972c9ab20fd25e73fd5"
 
 def analyze_text(text):
     score = analyzer.polarity_scores(text)['compound']
