@@ -1,74 +1,100 @@
 import streamlit as st
 import pandas as pd
+import time
+import random
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-# 1. Initialize the Sentiment Analyzer
+# --- 1. SETUP & ANALYSIS LOGIC ---
 analyzer = SentimentIntensityAnalyzer()
 
-def get_risk_level(text):
-    """Calculates sentiment and assigns a Risk Level."""
-    score = analyzer.polarity_scores(text)['compound']
-    if score <= -0.05:
-        return "🔴 HIGH RISK", score
-    elif score >= 0.05:
-        return "🟢 LOW RISK", score
-    else:
-        return "🟡 NEUTRAL", score
-
-# 2. Setup Headless Chrome Driver
 def get_driver():
     chrome_options = Options()
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    return webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), 
-        options=chrome_options
+    
+    # Rotate User-Agents to look like different browsers
+    user_agents = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+    ]
+    chrome_options.add_argument(f"user-agent={random.choice(user_agents)}")
+    
+    return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+
+def analyze_text(text):
+    score = analyzer.polarity_scores(text)['compound']
+    status = "🔴 HIGH" if score <= -0.05 else "🟢 LOW" if score >= 0.05 else "🟡 NEUTRAL"
+    return status, score
+
+# --- 2. USER INTERFACE ---
+st.set_page_config(page_title="Reputational Risk Auditor", layout="wide")
+st.title("Bulk Reputational Risk Auditor 📋")
+
+# Sidebar for CSV Handling
+st.sidebar.header("Data Management")
+uploaded_file = st.sidebar.file_uploader("Upload Vendor CSV", type=["csv"])
+
+if not uploaded_file:
+    st.info("Using default 'vendors.csv' from repository. Upload a new one in the sidebar to change lists.")
+    try:
+        df = pd.read_csv("vendors.csv")
+    except:
+        st.error("Could not find 'vendors.csv'. Please create it in your repo.")
+        df = pd.DataFrame(columns=["vendor_name"])
+else:
+    df = pd.read_csv(uploaded_file)
+
+# --- 3. EXECUTION ---
+if st.button("Start Bulk Audit") and not df.empty:
+    results = []
+    progress_bar = st.progress(0)
+    status_text = st.empty()
+    
+    driver = get_driver()
+    
+    for index, row in df.iterrows():
+        name = row['vendor_name']
+        
+        # RANDOM DELAY: Wait between 3 to 6 seconds per vendor
+        wait_time = random.uniform(3, 6)
+        status_text.text(f"Waiting {round(wait_time, 1)}s... Next: {name} ({index+1}/{len(df)})")
+        time.sleep(wait_time)
+        
+        # --- SIMULATED SCRAPE ---
+        # For POC purposes, we use a simulation. 
+        # Integration with driver.get() would go here for real URL scraping.
+        simulated_text = f"Review for {name}: Consumer complaints regarding lack of transparency and aggressive calls."
+        
+        risk_label, score = analyze_text(simulated_text)
+        results.append({
+            "Vendor": name, 
+            "Risk Level": risk_label, 
+            "Sentiment Score": score, 
+            "Snippet Found": simulated_text
+        })
+        
+        progress_bar.progress((index + 1) / len(df))
+    
+    driver.quit()
+    
+    # --- 4. RESULTS DISPLAY ---
+    st.success("Audit Complete!")
+    results_df = pd.DataFrame(results)
+    
+    # Display table
+    st.dataframe(results_df, use_container_width=True)
+    
+    # Provide download option
+    csv_report = results_df.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="Download Full Risk Report",
+        data=csv_report,
+        file_name="reputation_risk_audit.csv",
+        mime="text/csv"
     )
-
-# 3. Streamlit Interface
-st.set_page_config(page_title="Reputation Guard POC", layout="wide")
-st.title("Reputational Risk Monitor 🛡️")
-st.subheader("Law Firm & Vendor Compliance Check")
-
-vendor_name = st.text_input("Enter Vendor Name:", placeholder="e.g., Smith & Associates Collections")
-
-if st.button("Analyze Reputation"):
-    if vendor_name:
-        with st.spinner(f"Scraping and analyzing sentiment for {vendor_name}..."):
-            try:
-                # --- START SCRAPER ---
-                driver = get_driver()
-                
-                # For this POC, we are simulating finding a review or news snippet
-                # In a real tool, you'd use driver.find_elements to grab real text
-                sample_found_text = f"Consumer reported that {vendor_name} used aggressive tactics and failed to provide debt validation letters."
-                
-                # --- ANALYZE SENTIMENT ---
-                risk_label, raw_score = get_risk_level(sample_found_text)
-                
-                # --- DISPLAY RESULTS ---
-                col1, col2 = st.columns(2)
-                with col1:
-                    st.metric("Reputation Status", risk_label)
-                with col2:
-                    st.metric("Sentiment Score", round(raw_score, 2))
-                
-                st.write("**Latest Scraped Content Highlight:**")
-                st.info(sample_found_text)
-                
-                driver.quit()
-                # --- END SCRAPER ---
-
-            except Exception as e:
-                st.error(f"Error: {e}")
-    else:
-        st.warning("Please enter a name to begin.")
-
-# Sidebar for History or Instructions
-st.sidebar.header("About this POC")
-st.sidebar.write("This tool uses **Selenium** to gather public data and **VADER Sentiment** to flag potential reputational risks before hiring vendors.")
