@@ -1,10 +1,7 @@
 streamlit
 pandas
-selenium
-webdriver-manager
 vaderSentiment
 plotly
 requests
-beautifulsoup4
 wordcloud
 matplotlib
