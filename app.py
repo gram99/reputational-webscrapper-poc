@@ -3,6 +3,7 @@ import pandas as pd
 import time
 import random
 import requests
+from bs4 import BeautifulSoup # Ensure 'beautifulsoup4' is in requirements.txt
 import plotly.express as px
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
@@ -10,38 +11,51 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 analyzer = SentimentIntensityAnalyzer()
 
 def get_recovery_metrics(text):
+    """Calculates risk based on sentiment and industry-specific red flags."""
     score = analyzer.polarity_scores(text)['compound']
-    if score <= -0.05:
-        return "🔴 HIGH RISK", score, "Terminate/Audit"
-    elif score >= 0.05:
-        return "🟢 LOW RISK", score, "Expand/Onboard"
+    
+    # Custom 'Red Flag' detection for debt collection
+    red_flags = ["harassment", "aggressive", "unethical", "lawsuit", "illegal", "fined", "violations"]
+    if any(word in text.lower() for word in red_flags):
+        score -= 0.2 # Heavily penalize industry red flags
+
+    if score <= -0.1:
+        return "🔴 HIGH RISK", round(score, 2), "Terminate/Audit"
+    elif score >= 0.1:
+        return "🟢 LOW RISK", round(score, 2), "Expand/Onboard"
     else:
-        return "🟡 CAUTION", score, "Monitor/Restructure"
+        return "🟡 CAUTION", round(score, 2), "Monitor/Restructure"
 
 def get_search_data(name, city, state):
-    """Reliable search using DuckDuckGo's API-friendly interface."""
-    query = f"{name} {city} {state} debt collection complaints"
-    # Using the 'lite' version of DuckDuckGo which is rarely blocked
+    """Fetches real text snippets from the web for accurate analysis."""
+    query = f"{name} {city} {state} debt collection complaints reviews news"
+    # Using DuckDuckGo HTML for high reliability on cloud servers
     url = f"https://duckduckgo.com{query.replace(' ', '+')}"
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"}
     
     try:
-        response = requests.get(url, headers=headers, timeout=10)
+        response = requests.get(url, headers=headers, timeout=12)
         if response.status_code == 200:
-            # We use the page text for sentiment
-            return f"Found search results for {name} in {city}."
-        return "Search access limited by provider."
-    except:
-        return "Connection Timeout."
+            soup = BeautifulSoup(response.text, 'html.parser')
+            # Extract the actual text descriptions from the search results
+            snippets =]
+            if snippets:
+                return " ".join(snippets)
+            return f"General search for {name} returned no specific negative or positive narratives."
+        return "Connection successful but access to snippets was limited."
+    except Exception as e:
+        return f"Audit interrupted by connection timeout."
 
-# --- 2. UI ---
-st.set_page_config(page_title="Recovery Ops - Reputation Audit", layout="wide")
+# --- 2. EXECUTIVE UI ---
+st.set_page_config(page_title="Recovery Ops Auditor", layout="wide")
 st.title("Recovery Operations: Law Firm Reputation Auditor 🛡️")
+st.markdown("Automated panel monitoring for Reputational Risk and Compliance.")
 
 st.sidebar.header("Upload Vendor List")
 uploaded_file = st.sidebar.file_uploader("Upload CSV (vendor_name, city, state)", type=["csv"])
 
 if not uploaded_file:
+    # Industry standard sample for testing
     df = pd.DataFrame({
         "vendor_name": ["Weltman Weinberg & Reis", "Frederick J. Hanna & Assoc", "Zwicker & Associates"],
         "city": ["Cleveland", "Marietta", "Andover"],
@@ -54,12 +68,14 @@ else:
 if st.button("Launch Professional Panel Audit") and not df.empty:
     results = []
     
-    with st.spinner("Analyzing panel for reputational risk..."):
+    with st.spinner("Executing live reputation scan..."):
         for index, row in df.iterrows():
             name, city, state = row['vendor_name'], row['city'], row['state']
             
-            # Direct data fetch (No browser needed)
+            # 1. Fetch live snippets
             findings = get_search_data(name, city, state)
+            
+            # 2. Analyze sentiment + red flags
             risk_label, score, rec = get_recovery_metrics(findings)
             
             results.append({
@@ -67,17 +83,18 @@ if st.button("Launch Professional Panel Audit") and not df.empty:
                 "Location": f"{city}, {state}",
                 "Reputation Status": risk_label,
                 "Risk Score": score,
-                "Ops Recommendation": rec
+                "Ops Recommendation": rec,
+                "Audit Snippet": findings[:150] + "..." # Display a preview in the table
             })
-            time.sleep(1) # Gentle on servers
+            time.sleep(random.uniform(1.5, 3)) # Human-like pacing
     
     # --- 4. EXECUTIVE DASHBOARD ---
     res_df = pd.DataFrame(results)
     
     c1, c2, c3 = st.columns(3)
-    c1.metric("Total Firms Checked", len(res_df))
-    c2.metric("High Reputation Risks", len(res_df[res_df['Ops Recommendation'] == "Terminate/Audit"]))
-    c3.metric("Onboarding Candidates", len(res_df[res_df['Ops Recommendation'] == "Expand/Onboard"]))
+    c1.metric("Total Firms Audited", len(res_df))
+    c2.metric("Terminate/Audit (Risk)", len(res_df[res_df['Ops Recommendation'] == "Terminate/Audit"]))
+    c3.metric("Expand/Onboard (Growth)", len(res_df[res_df['Ops Recommendation'] == "Expand/Onboard"]))
 
     st.divider()
 
@@ -89,7 +106,7 @@ if st.button("Launch Professional Panel Audit") and not df.empty:
         st.plotly_chart(fig, use_container_width=True)
 
     with col_table:
-        st.subheader("Actionable Vendor Insights")
+        st.subheader("Actionable Audit Log")
         st.dataframe(res_df, use_container_width=True, hide_index=True)
 
-    st.download_button("Download Compliance Audit Report", res_df.to_csv(index=False), "recovery_audit_report.csv")
+    st.download_button("📩 Download Professional Audit Report", res_df.to_csv(index=False), "recovery_audit_report.csv")
