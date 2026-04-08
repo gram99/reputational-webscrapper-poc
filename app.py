@@ -1,119 +1,52 @@
 import streamlit as st
 import pandas as pd
 import requests
-import json
-import plotly.express as px
-import matplotlib
-matplotlib.use('Agg')
-import matplotlib.pyplot as plt
-from wordcloud import WordCloud
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 # --- 1. SETUP ---
-analyzer = SentimentIntensityAnalyzer()
+# Replace with your actual key directly for this test
+API_KEY = "d8d5cbf1dc92ecc4fba5b9154763c8243cd7910d" 
 
-# SECURITY: Try to get from secrets, fallback to a placeholder
-try:
-    SERPER_API_KEY = st.secrets["SERPER_KEY"]
-except:
-    SERPER_API_KEY = "d8d5cbf1dc92ecc4fba5b9154763c8243cd7910d"
-
-def analyze_text(text):
-    score = analyzer.polarity_scores(text)['compound']
-    if score <= -0.05: return "🔴 HIGH", score
-    elif score >= 0.05: return "🟢 LOW", score
-    else: return "🟡 NEUTRAL", score
-
-# --- 2. THE API FUNCTION ---
-def get_vendor_data_api(vendor_name):
-    url = "https://serper.dev"
-    payload = json.dumps({"q": f"{vendor_name} complaints reviews", "num": 5})
-    headers = {'X-API-KEY': SERPER_API_KEY, 'Content-Type': 'application/json'}
-
-    try:
-        response = requests.post(url, headers=headers, data=payload)
-        # Check if the API key is actually working
-        if response.status_code == 403:
-            return "Error: Invalid API Key. Check your Serper.dev dashboard."
-        
-        data = response.json()
-        snippets = []
-        if 'organic' in data:
-            for result in data['organic']:
-                snippets.append(result.get('snippet', ''))
-        
-        return " | ".join(snippets) if snippets else "No public data found."
-    except Exception as e:
-        return f"Connection Error: {str(e)}"
-
-# --- 3. UI ---
-st.set_page_config(page_title="Reputation Guard Pro", layout="wide")
-st.title("Reputational Risk Dashboard 🛡️")
-
-# Sidebar
-st.sidebar.header("Settings")
-uploaded_file = st.sidebar.file_uploader("Upload Vendor CSV", type=["csv"])
-
-# Load Data
-try:
-    if uploaded_file:
-        df = pd.read_csv(uploaded_file)
-    else:
-        df = pd.read_csv("vendors.csv")
-except:
-    df = pd.DataFrame({"vendor_name": ["Example Firm A", "Example Firm B"]})
-
-# --- 4. EXECUTION ---
-if st.button("Launch Professional Audit"):
-    results = []
-    combined_text = ""
+def get_search_results(vendor_name):
+    """Simplified search function focusing only on data retrieval."""
+    url = f"https://serper.dev{vendor_name}+complaints"
+    headers = {'X-API-KEY': API_KEY}
     
-    with st.spinner("Accessing global search data..."):
+    try:
+        # Using a simple GET request instead of a complex POST
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            data = response.json()
+            # Grab just the first snippet to prove it works
+            if 'organic' in data and len(data['organic']) > 0:
+                return data['organic'][0].get('snippet', 'Data found, but no snippet.')
+            return "Search successful, but no public complaints found."
+        else:
+            return f"Server Error: {response.status_code}"
+    except Exception as e:
+        return f"Connection Issue: {str(e)[:50]}"
+
+# --- 2. SIMPLE UI ---
+st.title("Reputational Risk Scraper POC 🛡️")
+
+# Load your vendors.csv
+try:
+    df = pd.read_csv("vendors.csv")
+    st.write("### Current Vendor List", df)
+except:
+    st.error("Could not find vendors.csv. Please ensure it is in your GitHub repo.")
+    df = pd.DataFrame()
+
+if st.button("Run Scraper") and not df.empty:
+    results = []
+    
+    with st.spinner("Fetching live data..."):
         for index, row in df.iterrows():
             name = row['vendor_name']
-            raw_text = get_vendor_data_api(name)
-            combined_text += " " + raw_text
+            # Get the raw data
+            findings = get_search_results(name)
+            results.append({"Vendor": name, "Public Findings": findings})
             
-            risk_label, score = analyze_text(raw_text)
-            results.append({
-                "Vendor": name, 
-                "Risk": risk_label, 
-                "Score": score, 
-                "Findings": raw_text
-            })
-
-    # Create the dataframe immediately so visuals don't crash
+    # Display simple results table
     res_df = pd.DataFrame(results)
-    
-    # --- 5. DISPLAY ---
-    st.success("Audit Complete!")
-    
-    # Metrics
-    m1, m2, m3 = st.columns(3)
-    m1.metric("Total Audited", len(res_df))
-    m2.metric("High Risk Flags", len(res_df[res_df['Risk'] == "🔴 HIGH"]))
-    m3.metric("Avg Sentiment", round(res_df['Score'].mean(), 2))
-
-    st.divider()
-
-    # Visuals
-    col_left, col_right = st.columns([1, 1.5])
-    
-    with col_left:
-        st.subheader("Risk Mix")
-        fig = px.pie(res_df, names='Risk', color='Risk',
-                     color_discrete_map={'🔴 HIGH':'#ff4b4b', '🟢 LOW':'#00cc96', '🟡 NEUTRAL':'#636efa'})
-        st.plotly_chart(fig, use_container_width=True)
-
-        # Only show cloud if we have real data (not errors)
-        if len(combined_text) > 50 and "Error" not in combined_text:
-            st.subheader("Risk Keywords")
-            wc = WordCloud(background_color="white", colormap="Reds").generate(combined_text)
-            fig_wc, ax = plt.subplots()
-            ax.imshow(wc, interpolation='bilinear')
-            ax.axis("off")
-            st.pyplot(fig_wc)
-
-    with col_right:
-        st.subheader("Detailed Audit Log")
-        st.dataframe(res_df, use_container_width=True)
+    st.success("Scrape Complete!")
+    st.table(res_df)
