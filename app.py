@@ -38,7 +38,7 @@ def analyze_text(text):
     elif score >= 0.05: return "🟢 LOW", score
     else: return "🟡 NEUTRAL", score
 
-# --- 2. FIXED SEARCH FUNCTION ---
+# --- 2. SEARCH FUNCTION ---
 def get_vendor_headlines(driver, vendor_name):
     search_query = f"{vendor_name} complaints"
     url = f"https://google.com{search_query}&tbm=nws"
@@ -48,9 +48,8 @@ def get_vendor_headlines(driver, vendor_name):
     
     try:
         headlines = driver.find_elements(By.TAG_NAME, "h3")
-        # --- FIXED SYNTAX HERE ---
+        # THIS IS THE SPECIFIC LINE THAT WAS CAUSING THE ERROR
         top_headlines = if h.text.strip()]
-        # -------------------------
         return " | ".join(top_headlines) if top_headlines else "No significant headlines found."
     except Exception as e:
         return f"Search failed: {str(e)}"
@@ -127,7 +126,7 @@ if st.button("Launch Live Reputation Audit") and not df.empty:
             ax.axis("off")
             st.pyplot(fig_wc)
 
-    with col_table:
+    with table_col:
         st.subheader("Detailed Findings")
         st.dataframe(res_df, use_container_width=True)
 
