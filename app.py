@@ -3,10 +3,12 @@ import pandas as pd
 import time
 import random
 import plotly.express as px
+import matplotlib.pyplot as plt
+from wordcloud import WordCloud
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
-from selenium.webdriver.common.by import By  # NEW: For finding page elements
+from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
@@ -36,29 +38,24 @@ def analyze_text(text):
     elif score >= 0.05: return "🟢 LOW", score
     else: return "🟡 NEUTRAL", score
 
-# --- 2. THE SEARCH FUNCTION ---
+# --- 2. FIXED SEARCH FUNCTION ---
 def get_vendor_headlines(driver, vendor_name):
     """Real Search: Pulls top headlines from Google News for a vendor."""
     search_query = f"{vendor_name} complaints"
-    # Use the 'tbm=nws' parameter to target the News tab specifically
-    url = f"https://www.google.com/search?q={search_query}&tbm=nws"
+    url = f"https://google.com{search_query}&tbm=nws"
     
     driver.get(url)
-    time.sleep(2) # Give the page time to load
+    time.sleep(2) 
     
     try:
-        # Locate headlines (Google News headlines typically use h3 tags)
         headlines = driver.find_elements(By.TAG_NAME, "h3")
-        if headlines:
-            # Join the first 3 headlines for a broader sentiment check
-            top_headlines = if h.text]
-            return " | ".join(top_headlines) if top_headlines else "No specific news found."
+        # FIXED LINE BELOW: Corrected list comprehension syntax
+        top_headlines = if h.text.strip()]
+        return " | ".join(top_headlines) if top_headlines else "No specific news found."
     except Exception as e:
         return f"Search failed: {str(e)}"
-    
-    return "No significant headlines found."
 
-# --- 3. USER INTERFACE ---
+# --- 3. UI & DATA HANDLING ---
 st.set_page_config(page_title="Reputation Guard Pro", layout="wide")
 st.title("Reputational Risk Executive Dashboard 🛡️")
 
@@ -76,6 +73,7 @@ else:
 # --- 4. EXECUTION ---
 if st.button("Launch Live Reputation Audit") and not df.empty:
     results = []
+    all_text_for_cloud = ""
     progress_bar = st.progress(0)
     status_text = st.empty()
     
@@ -83,14 +81,12 @@ if st.button("Launch Live Reputation Audit") and not df.empty:
     
     for index, row in df.iterrows():
         name = row['vendor_name']
-        
-        # Randomized delay to prevent blocking
         wait_time = random.uniform(4, 7)
-        status_text.text(f"Searching web for: {name} (Waiting {round(wait_time, 1)}s)...")
+        status_text.text(f"Searching web for: {name}...")
         time.sleep(wait_time)
         
-        # REAL SCRAPING LOGIC
         real_text = get_vendor_headlines(driver, name)
+        all_text_for_cloud += " " + real_text
         
         risk_label, score = analyze_text(real_text)
         results.append({
@@ -104,10 +100,11 @@ if st.button("Launch Live Reputation Audit") and not df.empty:
     
     driver.quit()
     
-    # --- 5. RESULTS DISPLAY ---
+    # --- 5. RESULTS & VISUALS ---
     st.success("Audit Complete!")
     res_df = pd.DataFrame(results)
 
+    # Top Metrics
     c1, c2, c3 = st.columns(3)
     c1.metric("Total Vendors", len(res_df))
     c2.metric("High Risk Identified", len(res_df[res_df['Risk'] == "🔴 HIGH"]))
@@ -115,19 +112,27 @@ if st.button("Launch Live Reputation Audit") and not df.empty:
 
     st.divider()
 
-    chart_col, table_col = st.columns([1, 1.5])
+    # Layout: Chart, Table, and Word Cloud
+    col_chart, col_table = st.columns([1, 1.5])
     
-    with chart_col:
+    with col_chart:
         st.subheader("Risk Distribution")
         fig = px.pie(res_df, names='Risk', color='Risk',
                      color_discrete_map={'🔴 HIGH':'#ff4b4b', '🟢 LOW':'#00cc96', '🟡 NEUTRAL':'#636efa'})
         st.plotly_chart(fig, use_container_width=True)
 
-    with table_col:
+        # WORD CLOUD SECTION
+        if all_text_for_cloud.strip():
+            st.subheader("Key Risk Keywords")
+            wordcloud = WordCloud(width=400, height=200, background_color='white', colormap='Reds').generate(all_text_for_cloud)
+            fig_wc, ax = plt.subplots()
+            ax.imshow(wordcloud, interpolation='bilinear')
+            ax.axis("off")
+            st.pyplot(fig_wc)
+
+    with col_table:
         st.subheader("Detailed Findings")
         st.dataframe(res_df, use_container_width=True)
 
     csv_report = res_df.to_csv(index=False).encode('utf-8')
     st.download_button("📩 Download Regulatory Compliance Report", data=csv_report, file_name="vendor_risk_audit.csv")
-
-st.sidebar.info("This tool now pulls live headlines from Google News to calculate risk levels.")
