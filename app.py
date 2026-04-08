@@ -1,13 +1,14 @@
 import streamlit as st
 import pandas as pd
 import time
+import random
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-# --- SETUP ---
+# --- 1. SETUP & ANALYSIS LOGIC ---
 analyzer = SentimentIntensityAnalyzer()
 
 def get_driver():
@@ -15,6 +16,15 @@ def get_driver():
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    
+    # Rotate User-Agents to look like different browsers
+    user_agents = [
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
+        "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
+    ]
+    chrome_options.add_argument(f"user-agent={random.choice(user_agents)}")
+    
     return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
 def analyze_text(text):
@@ -22,23 +32,25 @@ def analyze_text(text):
     status = "🔴 HIGH" if score <= -0.05 else "🟢 LOW" if score >= 0.05 else "🟡 NEUTRAL"
     return status, score
 
-# --- UI ---
-st.set_page_config(page_title="Bulk Vendor Auditor", layout="wide")
+# --- 2. USER INTERFACE ---
+st.set_page_config(page_title="Reputational Risk Auditor", layout="wide")
 st.title("Bulk Reputational Risk Auditor 📋")
 
-# 1. Upload or Load CSV
+# Sidebar for CSV Handling
+st.sidebar.header("Data Management")
 uploaded_file = st.sidebar.file_uploader("Upload Vendor CSV", type=["csv"])
+
 if not uploaded_file:
-    st.info("Upload a CSV with a 'vendor_name' column to begin, or use the default 'vendors.csv' in the repo.")
-    # Fallback to a local file if it exists
+    st.info("Using default 'vendors.csv' from repository. Upload a new one in the sidebar to change lists.")
     try:
         df = pd.read_csv("vendors.csv")
     except:
+        st.error("Could not find 'vendors.csv'. Please create it in your repo.")
         df = pd.DataFrame(columns=["vendor_name"])
 else:
     df = pd.read_csv(uploaded_file)
 
-# 2. Run Bulk Analysis
+# --- 3. EXECUTION ---
 if st.button("Start Bulk Audit") and not df.empty:
     results = []
     progress_bar = st.progress(0)
@@ -48,27 +60,41 @@ if st.button("Start Bulk Audit") and not df.empty:
     
     for index, row in df.iterrows():
         name = row['vendor_name']
-        status_text.text(f"Auditing: {name} ({index+1}/{len(df)})")
         
-        # --- SIMULATED SCRAPE (Replace with real URL logic) ---
-        # In a real scenario: driver.get(f"https://google.com{name}+reviews")
-        # For this POC, we'll simulate a finding
-        simulated_text = f"Review for {name}: They were very aggressive and didn't follow FDCPA guidelines."
+        # RANDOM DELAY: Wait between 3 to 6 seconds per vendor
+        wait_time = random.uniform(3, 6)
+        status_text.text(f"Waiting {round(wait_time, 1)}s... Next: {name} ({index+1}/{len(df)})")
+        time.sleep(wait_time)
+        
+        # --- SIMULATED SCRAPE ---
+        # For POC purposes, we use a simulation. 
+        # Integration with driver.get() would go here for real URL scraping.
+        simulated_text = f"Review for {name}: Consumer complaints regarding lack of transparency and aggressive calls."
         
         risk_label, score = analyze_text(simulated_text)
-        results.append({"Vendor": name, "Risk Level": risk_label, "Score": score, "Snippet": simulated_text})
+        results.append({
+            "Vendor": name, 
+            "Risk Level": risk_label, 
+            "Sentiment Score": score, 
+            "Snippet Found": simulated_text
+        })
         
-        # Update progress
         progress_bar.progress((index + 1) / len(df))
-        time.sleep(1) # Gentle on servers
     
     driver.quit()
     
-    # 3. Display Results
-    results_df = pd.DataFrame(results)
+    # --- 4. RESULTS DISPLAY ---
     st.success("Audit Complete!")
+    results_df = pd.DataFrame(results)
+    
+    # Display table
     st.dataframe(results_df, use_container_width=True)
     
-    # 4. Download Results
-    csv_output = results_df.to_csv(index=False).encode('utf-8')
-    st.download_button("Download Risk Report", data=csv_output, file_name="reputation_report.csv", mime="text/csv")
+    # Provide download option
+    csv_report = results_df.to_csv(index=False).encode('utf-8')
+    st.download_button(
+        label="Download Full Risk Report",
+        data=csv_report,
+        file_name="reputation_risk_audit.csv",
+        mime="text/csv"
+    )
