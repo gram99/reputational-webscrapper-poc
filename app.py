@@ -11,7 +11,12 @@ from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
 # --- 1. SETUP ---
 analyzer = SentimentIntensityAnalyzer()
-SERPER_API_KEY = "768f5110358df3687ff28972c9ab20fd25e73fd5"
+
+# SECURITY: Try to get from secrets, fallback to a placeholder
+try:
+    SERPER_API_KEY = st.secrets["SERPER_KEY"]
+except:
+    SERPER_API_KEY = "768f5110358df3687ff28972c9ab20fd25e73fd5"
 
 def analyze_text(text):
     score = analyzer.polarity_scores(text)['compound']
@@ -19,102 +24,96 @@ def analyze_text(text):
     elif score >= 0.05: return "🟢 LOW", score
     else: return "🟡 NEUTRAL", score
 
-# --- 2. THE NEW SEARCH FUNCTION (NO SELENIUM!) ---
+# --- 2. THE API FUNCTION ---
 def get_vendor_data_api(vendor_name):
     url = "https://serper.dev"
-    
-    # We ask for news and general results for "vendor name complaints"
-    payload = json.dumps({
-        "q": f"{vendor_name} complaints reviews",
-        "num": 5
-    })
-    headers = {
-        'X-API-KEY': SERPER_API_KEY,
-        'Content-Type': 'application/json'
-    }
+    payload = json.dumps({"q": f"{vendor_name} complaints reviews", "num": 5})
+    headers = {'X-API-KEY': SERPER_API_KEY, 'Content-Type': 'application/json'}
 
     try:
-        response = requests.request("POST", url, headers=headers, data=payload)
-        data = response.json()
+        response = requests.post(url, headers=headers, data=payload)
+        # Check if the API key is actually working
+        if response.status_code == 403:
+            return "Error: Invalid API Key. Check your Serper.dev dashboard."
         
-        # We grab snippets from the search results
+        data = response.json()
         snippets = []
         if 'organic' in data:
-            for result in data['organic'][:3]:
+            for result in data['organic']:
                 snippets.append(result.get('snippet', ''))
         
         return " | ".join(snippets) if snippets else "No public data found."
     except Exception as e:
-        return f"API Error: {str(e)}"
+        return f"Connection Error: {str(e)}"
 
 # --- 3. UI ---
 st.set_page_config(page_title="Reputation Guard Pro", layout="wide")
-st.title("Reputational Risk Executive Dashboard 🛡️")
+st.title("Reputational Risk Dashboard 🛡️")
 
-st.sidebar.header("Data Management")
+# Sidebar
+st.sidebar.header("Settings")
 uploaded_file = st.sidebar.file_uploader("Upload Vendor CSV", type=["csv"])
 
-if not uploaded_file:
-    try:
+# Load Data
+try:
+    if uploaded_file:
+        df = pd.read_csv(uploaded_file)
+    else:
         df = pd.read_csv("vendors.csv")
-    except:
-        df = pd.DataFrame(columns=["vendor_name"])
-else:
-    df = pd.read_csv(uploaded_file)
+except:
+    df = pd.DataFrame({"vendor_name": ["Example Firm A", "Example Firm B"]})
 
 # --- 4. EXECUTION ---
-if st.button("Launch Professional Reputation Audit") and not df.empty:
+if st.button("Launch Professional Audit"):
     results = []
-    all_text_for_cloud = ""
+    combined_text = ""
     
-    # Notice: No 'driver' needed anymore! 
-    # It runs much faster so we don't need long progress bars.
-    with st.spinner("Analyzing vendor panel..."):
+    with st.spinner("Accessing global search data..."):
         for index, row in df.iterrows():
             name = row['vendor_name']
+            raw_text = get_vendor_data_api(name)
+            combined_text += " " + raw_text
             
-            # API call is near-instant
-            real_text = get_vendor_data_api(name)
-            all_text_for_cloud += " " + real_text
-            
-            risk_label, score = analyze_text(real_text)
+            risk_label, score = analyze_text(raw_text)
             results.append({
                 "Vendor": name, 
                 "Risk": risk_label, 
                 "Score": score, 
-                "Search Snippets": real_text
+                "Findings": raw_text
             })
-    
-    # --- 5. RESULTS ---
-    st.success("Audit Complete!")
-    res_df = pd.DataFrame(results)
 
-    c1, c2, c3 = st.columns(3)
-    c1.metric("Total Vendors Checked", len(res_df))
-    c2.metric("High Risk Flags", len(res_df[res_df['Risk'] == "🔴 HIGH"]))
-    c3.metric("Avg Sentiment Score", round(res_df['Score'].mean(), 2))
+    # Create the dataframe immediately so visuals don't crash
+    res_df = pd.DataFrame(results)
+    
+    # --- 5. DISPLAY ---
+    st.success("Audit Complete!")
+    
+    # Metrics
+    m1, m2, m3 = st.columns(3)
+    m1.metric("Total Audited", len(res_df))
+    m2.metric("High Risk Flags", len(res_df[res_df['Risk'] == "🔴 HIGH"]))
+    m3.metric("Avg Sentiment", round(res_df['Score'].mean(), 2))
 
     st.divider()
 
-    col_chart, col_table = st.columns([1, 1.5])
+    # Visuals
+    col_left, col_right = st.columns([1, 1.5])
     
-    with col_chart:
-        st.subheader("Reputation Distribution")
-        fig_pie = px.pie(res_df, names='Risk', color='Risk',
+    with col_left:
+        st.subheader("Risk Mix")
+        fig = px.pie(res_df, names='Risk', color='Risk',
                      color_discrete_map={'🔴 HIGH':'#ff4b4b', '🟢 LOW':'#00cc96', '🟡 NEUTRAL':'#636efa'})
-        st.plotly_chart(fig_pie, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
 
-        if all_text_for_cloud.strip():
-            st.subheader("Key Risk Keywords")
-            wc = WordCloud(width=400, height=200, background_color='white', colormap='Reds').generate(all_text_for_cloud)
+        # Only show cloud if we have real data (not errors)
+        if len(combined_text) > 50 and "Error" not in combined_text:
+            st.subheader("Risk Keywords")
+            wc = WordCloud(background_color="white", colormap="Reds").generate(combined_text)
             fig_wc, ax = plt.subplots()
             ax.imshow(wc, interpolation='bilinear')
             ax.axis("off")
             st.pyplot(fig_wc)
 
-    with table_col:
-        st.subheader("Findings & Live Sources")
+    with col_right:
+        st.subheader("Detailed Audit Log")
         st.dataframe(res_df, use_container_width=True)
-
-    csv_report = res_df.to_csv(index=False).encode('utf-8')
-    st.download_button("📩 Download Compliance Audit Report", data=csv_report, file_name="reputation_audit_report.csv")
