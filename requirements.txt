@@ -6,3 +6,5 @@ vaderSentiment
 plotly
 requests
 beautifulsoup4
+wordcloud
+matplotlib
