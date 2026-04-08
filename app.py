@@ -16,6 +16,7 @@ def get_driver():
     chrome_options.add_argument("--headless")
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
+    chrome_options.add_argument("--disable-gpu")
     
     # Rotate User-Agents to look like different browsers
     user_agents = [
@@ -25,7 +26,14 @@ def get_driver():
     ]
     chrome_options.add_argument(f"user-agent={random.choice(user_agents)}")
     
-    return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
+    # FIX: Point to the system-installed driver on Streamlit Cloud
+    try:
+        # Standard path for chromium-driver in the Streamlit Linux environment
+        service = Service("/usr/bin/chromedriver")
+        return webdriver.Chrome(service=service, options=chrome_options)
+    except Exception:
+        # Fallback for local testing on your personal computer
+        return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
 def analyze_text(text):
     score = analyzer.polarity_scores(text)['compound']
@@ -66,9 +74,8 @@ if st.button("Start Bulk Audit") and not df.empty:
         status_text.text(f"Waiting {round(wait_time, 1)}s... Next: {name} ({index+1}/{len(df)})")
         time.sleep(wait_time)
         
-        # --- SIMULATED SCRAPE ---
-        # For POC purposes, we use a simulation. 
-        # Integration with driver.get() would go here for real URL scraping.
+        # --- SCRAPE LOGIC ---
+        # Note: Replace this simulation with driver.get() for live scraping
         simulated_text = f"Review for {name}: Consumer complaints regarding lack of transparency and aggressive calls."
         
         risk_label, score = analyze_text(simulated_text)
