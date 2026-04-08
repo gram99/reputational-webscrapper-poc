@@ -16,7 +16,7 @@ analyzer = SentimentIntensityAnalyzer()
 try:
     SERPER_API_KEY = st.secrets["SERPER_KEY"]
 except:
-    SERPER_API_KEY = "768f5110358df3687ff28972c9ab20fd25e73fd5"
+    SERPER_API_KEY = "d8d5cbf1dc92ecc4fba5b9154763c8243cd7910d"
 
 def analyze_text(text):
     score = analyzer.polarity_scores(text)['compound']
