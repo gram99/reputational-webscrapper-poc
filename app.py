@@ -9,7 +9,7 @@ from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-# --- 1. THE BRAINS ---
+# --- 1. SETUP ---
 analyzer = SentimentIntensityAnalyzer()
 
 def get_driver():
@@ -19,14 +19,15 @@ def get_driver():
     chrome_options.add_argument("--disable-dev-shm-usage")
     chrome_options.add_argument("--disable-gpu")
     
-    # STEALTH FIX: Tells websites you are a real person on a computer, not a bot
+    # NEW STEALTH FLAGS: These make the browser look like a standard desktop window
+    chrome_options.add_argument("--window-size=1920,1080")
+    chrome_options.add_argument("--disable-blink-features=AutomationControlled")
     chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36")
     
     try:
         service = Service("/usr/bin/chromedriver")
         return webdriver.Chrome(service=service, options=chrome_options)
     except:
-        # Local fallback if testing on your own computer
         return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
 
 def analyze_reputation(text):
@@ -35,16 +36,14 @@ def analyze_reputation(text):
     elif score >= 0.05: return "🟢 LOW", score
     else: return "🟡 NEUTRAL", score
 
-# --- 2. THE UI ---
+# --- 2. UI ---
 st.set_page_config(page_title="Reputation Guard POC", layout="wide")
 st.title("Reputational Risk Scraper POC 🛡️")
 
-# CSV Management
 st.sidebar.header("Data Upload")
 uploaded_file = st.sidebar.file_uploader("Upload your Vendor CSV", type=["csv"])
 
 if not uploaded_file:
-    st.info("Using default 'vendors.csv' from your repository.")
     try:
         df = pd.read_csv("vendors.csv")
     except:
@@ -63,50 +62,44 @@ if st.button("Run Scraper") and not df.empty:
         name = row['vendor_name']
         st.write(f"🔍 Auditing: **{name}**...")
         
-        # More direct search URL
-        search_url = f"https://google.com{name}+complaints"
+        # Using DuckDuckGo instead of Google for the POC
+        # It is MUCH friendlier to scrapers and rarely blocks cloud IPs.
+        search_url = f"https://duckduckgo.com{name.replace(' ', '+')}+complaints"
         
         try:
             driver.get(search_url)
-            # Random wait helps avoid bot detection
-            time.sleep(random.uniform(4, 7)) 
+            time.sleep(random.uniform(5, 8)) # Longer wait for cloud stability
             
-            # Capture the page title and top visible text snippets
-            page_title = driver.title
-            risk_label, score = analyze_reputation(page_title)
+            page_text = driver.title
+            risk_label, score = analyze_reputation(page_text)
             
             results.append({
                 "Vendor": name, 
                 "Risk Level": risk_label, 
-                "Sentiment Score": score, 
-                "Findings": f"Search Result: {page_title}"
+                "Score": score, 
+                "Findings": f"Public Search: {page_text}"
             })
         except Exception as e:
             results.append({
                 "Vendor": name, 
                 "Risk Level": "⚪ ERROR", 
-                "Sentiment Score": 0, 
-                "Findings": "Connection Timed Out"
+                "Score": 0, 
+                "Findings": "Cloud Blocked Connection"
             })
         
         progress_bar.progress((index + 1) / len(df))
     
     driver.quit()
     
-    # --- 4. THE RESULTS ---
+    # --- 4. RESULTS ---
     st.success("Scrape Complete!")
     res_df = pd.DataFrame(results)
 
-    col1, col2 = st.columns([1, 2])
+    col1, col2 = st.columns()
     with col1:
         st.subheader("Risk Mix")
         fig = px.pie(res_df, names='Risk Level', color='Risk Level',
-                     color_discrete_map={
-                         '🔴 HIGH':'#ff4b4b', 
-                         '🟢 LOW':'#00cc96', 
-                         '🟡 NEUTRAL':'#636efa', 
-                         '⚪ ERROR':'#808080'
-                     })
+                     color_discrete_map={'🔴 HIGH':'#ff4b4b', '🟢 LOW':'#00cc96', '🟡 NEUTRAL':'#636efa', '⚪ ERROR':'#808080'})
         st.plotly_chart(fig, use_container_width=True)
     
     with col2:
@@ -114,4 +107,4 @@ if st.button("Run Scraper") and not df.empty:
         st.dataframe(res_df, use_container_width=True)
 
     csv = res_df.to_csv(index=False).encode('utf-8')
-    st.download_button("Download Compliance Report", csv, "reputation_report.csv", "text/csv")
+    st.download_button("Download Report", csv, "reputation_report.csv")
