@@ -20,7 +20,7 @@ def get_simulated_reputation(name):
 
 # --- 2. UI DESIGN ---
 st.set_page_config(page_title="Recovery Ops Auditor", layout="wide")
-st.title("Recovery Operations: Law Firm Reputation Auditor 🛡️")
+st.title("Law Firm Reputation Auditor 🛡️")
 
 # --- 3. SIDEBAR & TEMPLATE GENERATOR ---
 st.sidebar.header("Data Management")
