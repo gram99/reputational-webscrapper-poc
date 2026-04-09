@@ -55,12 +55,12 @@ If you do not have a list of firms to populate the template, a pre-populated upl
 
 **To use the pre-populated file:** 
 
-1.  Click the link shown above.
-2.  When the page returns, click the download button (icon with the down pointing arrow located in the upper right side of the screen)
-3.  After clicking the download icon, the file should be automatically saved to the "downloads" folder on your computer.
-4.  If it is not, you may specify your downloads folder or another location such as your desktop so the file is easily found.
-5.  After you have downloaded the pre-populated file click the "Upload" button and select the file from the download location.
-6.  Click the "Professional Audit" button to generate results.
+-    Click the link shown above.
+-    When the page returns, click the download button (icon with the down pointing arrow located in the upper right side of the screen)
+-    After clicking the download icon, the file should be automatically saved to the "downloads" folder on your computer.
+-    If it is not, you may specify your downloads folder or another location such as your desktop so the file is easily found.
+-    After you have downloaded the pre-populated file click the "Upload" button and select the file from the download location.
+-    Click the "Professional Audit" button to generate results.
 
 ---
 
