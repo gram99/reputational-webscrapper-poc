@@ -1,6 +1,6 @@
 # 🛡️ Law Firm Reputation Auditor (PoC)
 
-**📌 Project Overview:** This Proof of Concept (PoC) provides managers with a streamlined, automated dashboard to monitor the reputational risk of their legal vendor panels. By analyzing public sentiment and industry-specific red flags, this tool identifies which firms protect the bank's brand and which may pose a contractual or reputational threat.
+**📌 Project Overview:** This Proof of Concept (PoC) provides managers with a streamlined, automated dashboard to monitor the reputational risk of their legal vendor panels. By analyzing public sentiment and industry-specific red flags, this tool identifies which firms protect the firms's brand and which may pose a contractual or reputational threat.
 
 ## 🚀 Key Features
 
