@@ -36,15 +36,19 @@ def get_search_data(name, city, state):
         response = requests.get(url, headers=headers, timeout=12)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
-            # FIXED LINE: We look for the snippet text specifically
-            snippets =
             
-            if snippets:
-                return " ".join(snippets[:3]) # Take the top 3 results
+            # REWRITTEN FOR STABILITY: Standard loop instead of list comprehension
+            all_results = soup.find_all('a', class_='result__snippet')
+            snippets_list = []
+            for item in all_results[:4]:
+                snippets_list.append(item.get_text())
+            
+            if len(snippets_list) > 0:
+                return " ".join(snippets_list)
             return f"Found results for {name}, but no specific consumer narratives available."
         return "Search provider access limited."
-    except:
-        return "Connection timeout."
+    except Exception as e:
+        return f"Connection timeout: {str(e)[:30]}"
 
 # --- 2. EXECUTIVE UI ---
 st.set_page_config(page_title="Recovery Ops Auditor", layout="wide")
