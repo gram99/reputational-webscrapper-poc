@@ -6,21 +6,23 @@
 
 - **Automated Risk Tiering:** Instantly categorizes law firms into three actionable buckets:
 
-  - 🟢 Low Risk: High professional standards; candidates for volume expansion.
-  - 🟡 Caution: Mixed reviews; recommended for increased oversight/monitoring.
-  - 🔴 High Risk: Significant consumer complaints; candidates for audit or termination.
+  - 🟢 **Low Risk:** High professional standards; candidates for volume expansion.
+  - 🟡 **Caution:** Mixed reviews; recommended for increased oversight/monitoring.
+  - 🔴 **High Risk:** Significant consumer complaints; candidates for audit or termination.
 
-Quantitative Scoring: Assigns a Sentiment Risk Score (-1.0 to 1.0) to every firm for objective comparison across the panel.
+- **Quantitative Scoring:** Assigns a Sentiment Risk Score (-1.0 to 1.0) to every firm for objective comparison across the panel.
 
-Executive Dashboard: High-level visual breakdown of the panel's "Risk Mix" via interactive Plotly charts.
+- **Executive Dashboard:** High-level visual breakdown of the panel's "Risk Mix" via interactive Plotly charts.
 
-Corporate-Safe Architecture: Designed to run reliably behind corporate VPNs and firewalls without external API dependencies.
+- **Corporate-Safe Architecture:** Designed to run reliably behind corporate VPNs and firewalls without external API dependencies.
 
-Standardized Workflow: Includes a downloadable CSV template to ensure seamless data ingestion and user adoption.
+- **Standardized Workflow:** Includes a downloadable CSV template to ensure seamless data ingestion and user adoption.
 
-🛠️ Technical Stack
+---
 
-Language: Python 3.x
+## 🛠️ Technical Stack
+
+- **Language:** Python 3.x
 
 Interface: Streamlit
 
