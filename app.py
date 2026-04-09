@@ -3,7 +3,7 @@ import pandas as pd
 import time
 import random
 import requests
-from bs4 import BeautifulSoup # Ensure 'beautifulsoup4' is in requirements.txt
+from bs4 import BeautifulSoup 
 import plotly.express as px
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
@@ -17,7 +17,7 @@ def get_recovery_metrics(text):
     # Custom 'Red Flag' detection for debt collection
     red_flags = ["harassment", "aggressive", "unethical", "lawsuit", "illegal", "fined", "violations"]
     if any(word in text.lower() for word in red_flags):
-        score -= 0.2 # Heavily penalize industry red flags
+        score -= 0.2 
 
     if score <= -0.1:
         return "🔴 HIGH RISK", round(score, 2), "Terminate/Audit"
@@ -28,34 +28,32 @@ def get_recovery_metrics(text):
 
 def get_search_data(name, city, state):
     """Fetches real text snippets from the web for accurate analysis."""
-    query = f"{name} {city} {state} debt collection complaints reviews news"
-    # Using DuckDuckGo HTML for high reliability on cloud servers
+    query = f"{name} {city} {state} debt collection complaints"
     url = f"https://duckduckgo.com{query.replace(' ', '+')}"
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)"}
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
     
     try:
         response = requests.get(url, headers=headers, timeout=12)
         if response.status_code == 200:
             soup = BeautifulSoup(response.text, 'html.parser')
-            # Extract the actual text descriptions from the search results
-            snippets =]
+            # FIXED LINE: We look for the snippet text specifically
+            snippets =
+            
             if snippets:
-                return " ".join(snippets)
-            return f"General search for {name} returned no specific negative or positive narratives."
-        return "Connection successful but access to snippets was limited."
-    except Exception as e:
-        return f"Audit interrupted by connection timeout."
+                return " ".join(snippets[:3]) # Take the top 3 results
+            return f"Found results for {name}, but no specific consumer narratives available."
+        return "Search provider access limited."
+    except:
+        return "Connection timeout."
 
 # --- 2. EXECUTIVE UI ---
 st.set_page_config(page_title="Recovery Ops Auditor", layout="wide")
 st.title("Recovery Operations: Law Firm Reputation Auditor 🛡️")
-st.markdown("Automated panel monitoring for Reputational Risk and Compliance.")
 
 st.sidebar.header("Upload Vendor List")
 uploaded_file = st.sidebar.file_uploader("Upload CSV (vendor_name, city, state)", type=["csv"])
 
 if not uploaded_file:
-    # Industry standard sample for testing
     df = pd.DataFrame({
         "vendor_name": ["Weltman Weinberg & Reis", "Frederick J. Hanna & Assoc", "Zwicker & Associates"],
         "city": ["Cleveland", "Marietta", "Andover"],
@@ -72,10 +70,7 @@ if st.button("Launch Professional Panel Audit") and not df.empty:
         for index, row in df.iterrows():
             name, city, state = row['vendor_name'], row['city'], row['state']
             
-            # 1. Fetch live snippets
             findings = get_search_data(name, city, state)
-            
-            # 2. Analyze sentiment + red flags
             risk_label, score, rec = get_recovery_metrics(findings)
             
             results.append({
@@ -84,17 +79,18 @@ if st.button("Launch Professional Panel Audit") and not df.empty:
                 "Reputation Status": risk_label,
                 "Risk Score": score,
                 "Ops Recommendation": rec,
-                "Audit Snippet": findings[:150] + "..." # Display a preview in the table
+                "Snippet Preview": findings[:100] + "..."
             })
-            time.sleep(random.uniform(1.5, 3)) # Human-like pacing
+            time.sleep(random.uniform(1.5, 3))
     
     # --- 4. EXECUTIVE DASHBOARD ---
     res_df = pd.DataFrame(results)
+    st.success("Panel Audit Complete!")
     
     c1, c2, c3 = st.columns(3)
-    c1.metric("Total Firms Audited", len(res_df))
-    c2.metric("Terminate/Audit (Risk)", len(res_df[res_df['Ops Recommendation'] == "Terminate/Audit"]))
-    c3.metric("Expand/Onboard (Growth)", len(res_df[res_df['Ops Recommendation'] == "Expand/Onboard"]))
+    c1.metric("Total Firms Checked", len(res_df))
+    c2.metric("High Risk Flags", len(res_df[res_df['Ops Recommendation'] == "Terminate/Audit"]))
+    c3.metric("Onboarding Candidates", len(res_df[res_df['Ops Recommendation'] == "Expand/Onboard"]))
 
     st.divider()
 
