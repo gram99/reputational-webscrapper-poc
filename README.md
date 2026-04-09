@@ -1,6 +1,6 @@
 # 🛡️ Law Firm Reputation Auditor (PoC)
 
-**📌 Project Overview:** This Proof of Concept (PoC) provides managers with a streamlined, automated dashboard to monitor the reputational risk of their legal vendor panels. By analyzing public sentiment and industry-specific red flags, this tool identifies which firms protect the firms's brand and which may pose a contractual or reputational threat.
+**📌 Project Overview:** This Proof of Concept (PoC) provides managers with a streamlined, automated dashboard to monitor the reputational risk of their legal vendor panels. By analyzing public sentiment and industry-specific red flags, this tool identifies which law firms protect the company's brand and those that may pose a contractual or reputational threat.
 
 ## 🚀 Key Features
 
@@ -45,7 +45,11 @@
 4. **Review & Export:** Analyze the dashboard and download the full "Compliance Audit Report" for internal records.
 
 ***Pre-populated Upload File:*** A pre-populated upload file may be found here: https://github.com/gram99/reputational-webscrapper-poc/blob/main/WebScrapeTest.csv
-To user the pre-populated file, click the link and download the file to the "downloads" folder on your computer or to you desktop so it is easily found. After you have downloaded the pre-populated file click the "Upload" button and select the file from the download location the click the "Professional Audit" button to generate results.
+To user the pre-populated file, click the link and the download button <img width="265" height="63" alt="Screenshot 2026-04-08 at 9 13 17 PM" src="https://github.com/user-attachments/assets/73b013d4-8b99-412e-9895-f2b5ba9f0f04" />  (icon with the down pointing arrow in the upper right of the screen)
+
+The file should be automatically saved to the "downloads" folder on your computer. If it is not, you may specify your downloads folder or your desktop so the file is easily found. 
+
+After you have downloaded the pre-populated file click the "Upload" button and select the file from the download location the click the "Professional Audit" button to generate results.
 
 ---
 
