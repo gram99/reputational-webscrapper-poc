@@ -45,7 +45,7 @@
 4. **Review & Export:** Analyze the dashboard and download the full "Compliance Audit Report" for internal records.
 
 ***Pre-populated Upload File:*** A pre-populated upload file may be found here: https://github.com/gram99/reputational-webscrapper-poc/blob/main/WebScrapeTest.csv
-To user the pre-populated file, click the link and the download button <img width="265" height="63" alt="Screenshot 2026-04-08 at 9 13 17 PM" src="https://github.com/user-attachments/assets/73b013d4-8b99-412e-9895-f2b5ba9f0f04" />  (icon with the down pointing arrow in the upper right of the screen)
+To user the pre-populated file, click the link and the download button (icon with the down pointing arrow in the upper right of the screen)
 
 The file should be automatically saved to the "downloads" folder on your computer. If it is not, you may specify your downloads folder or your desktop so the file is easily found. 
 
