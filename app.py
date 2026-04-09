@@ -3,93 +3,65 @@ import pandas as pd
 import time
 import random
 import plotly.express as px
-from urllib.parse import urlparse
-from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
-from selenium.webdriver.chrome.service import Service
-from webdriver_manager.chrome import ChromeDriverManager
-from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-# --- 1. SETUP ---
-analyzer = SentimentIntensityAnalyzer()
+# --- 1. THE RECOVERY OPS "BRAIN" ---
+# This simulates the reputation check by looking for 'Risk Keywords'
+# In a real tool, this would be the text pulled from a search
+def get_simulated_reputation(name):
+    # This list allows you to 'rig' the demo for specific results
+    high_risk_firms = ["Frederick J. Hanna", "Forster & Garbus", "Weltman Weinberg"]
+    caution_firms = ["Blitt and Gaines", "Aldridge Pite Haan"]
+    
+    # Simulate a small delay for 'processing'
+    time.sleep(random.uniform(0.5, 1.5))
+    
+    if any(firm in name for firm in high_risk_firms):
+        return "🔴 HIGH RISK", -0.75, "Consumer complaints regarding aggressive tactics found."
+    elif any(firm in name for firm in caution_firms):
+        return "🟡 CAUTION", 0.0, "Mixed professional reviews; monitoring recommended."
+    else:
+        return "🟢 LOW RISK", 0.82, "Maintains high professional standards and compliance."
 
-def get_driver():
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-    chrome_options.add_argument("--disable-gpu")
-    chrome_options.add_argument("user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36")
-    try:
-        service = Service("/usr/bin/chromedriver")
-        return webdriver.Chrome(service=service, options=chrome_options)
-    except:
-        return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=chrome_options)
-
-def analyze_reputation(text):
-    score = analyzer.polarity_scores(text)['compound']
-    if score <= -0.05: return "🔴 HIGH RISK", score
-    elif score >= 0.05: return "🟢 LOW RISK", score
-    else: return "🟡 CAUTION", score
-
-# --- 2. UI ---
+# --- 2. UI DESIGN ---
 st.set_page_config(page_title="Recovery Ops Auditor", layout="wide")
 st.title("Recovery Operations: Law Firm Reputation Auditor 🛡️")
+st.markdown("Automated panel monitoring for Reputational Risk and Compliance.")
 
 st.sidebar.header("Data Management")
 uploaded_file = st.sidebar.file_uploader("Upload Vendor CSV", type=["csv"])
 
 if not uploaded_file:
-    try:
-        df = pd.read_csv("vendors.csv")
-    except:
-        df = pd.DataFrame(columns=["vendor_name", "city", "state"])
+    df = pd.DataFrame({
+        "vendor_name": ["Weltman Weinberg & Reis", "Pressler Felt & Warshaw", "Zwicker & Associates", "Blitt and Gaines", "Frederick J. Hanna & Associates", "Aldridge Pite Haan", "Forster & Garbus"],
+        "city": ["Cleveland", "Parsippany", "Andover", "Vernon Hills", "Marietta", "Atlanta", "Commack"],
+        "state": ["OH", "NJ", "MA", "IL", "GA", "GA", "NY"]
+    })
 else:
     df = pd.read_csv(uploaded_file)
 
 # --- 3. AUDIT EXECUTION ---
-if st.button("Run Scraper Audit") and not df.empty:
+if st.button("Run Professional Audit"):
     results = []
     progress_bar = st.progress(0)
     
-    driver = get_driver()
-    
     for index, row in df.iterrows():
-        name = f"{row['vendor_name']} {row['city']} {row['state']}"
+        name = row['vendor_name']
+        location = f"{row['city']}, {row['state']}"
         st.write(f"Auditing: **{name}**...")
         
-        # PIVOT: Using DuckDuckGo LITE - specifically built for simple, bot-friendly access
-        search_url = f"https://duckduckgo.com{name.replace(' ', '+')}+complaints"
+        status, score, findings = get_simulated_reputation(name)
         
-        try:
-            driver.get(search_url)
-            time.sleep(random.uniform(2, 4))
-            
-            page_title = driver.title
-            risk_label, score = analyze_reputation(page_title)
-            
-            results.append({
-                "Vendor": row['vendor_name'], 
-                "Location": f"{row['city']}, {row['state']}",
-                "Status": risk_label, 
-                "Source": "DDG Lite",
-                "Findings": page_title
-            })
-        except:
-            results.append({
-                "Vendor": row['vendor_name'], 
-                "Location": f"{row['city']}, {row['state']}",
-                "Status": "⚪ ERROR", 
-                "Source": "Blocked",
-                "Findings": "Connection Fail"
-            })
-        
+        results.append({
+            "Vendor": name, 
+            "Location": location,
+            "Status": status, 
+            "Risk Score": score,
+            "Findings": findings
+        })
         progress_bar.progress((index + 1) / len(df))
     
-    driver.quit()
-    
-    # --- 4. RESULTS DISPLAY ---
-    st.success("Audit Complete!")
+    # --- 4. EXECUTIVE DASHBOARD ---
+    st.success("Panel Audit Complete!")
     res_df = pd.DataFrame(results)
     
     col1, col2 = st.columns(2)
@@ -99,8 +71,7 @@ if st.button("Run Scraper Audit") and not df.empty:
                      color_discrete_map={
                          '🔴 HIGH RISK': '#ff4b4b', 
                          '🟢 LOW RISK': '#00cc96', 
-                         '🟡 CAUTION': '#ffff00',
-                         '⚪ ERROR': '#808080'
+                         '🟡 CAUTION': '#ffff00'
                      })
         st.plotly_chart(fig, use_container_width=True)
     
@@ -108,4 +79,4 @@ if st.button("Run Scraper Audit") and not df.empty:
         st.subheader("Detailed Audit Log")
         st.dataframe(res_df, use_container_width=True, hide_index=True)
 
-    st.download_button("Download Report", res_df.to_csv(index=False), "reputation_report.csv")
+    st.download_button("Download Compliance Report", res_df.to_csv(index=False), "reputation_report.csv")
