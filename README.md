@@ -7,8 +7,8 @@
 - **Automated Risk Tiering:** Instantly categorizes law firms into three actionable buckets:
 
   - 🟢 Low Risk: High professional standards; candidates for volume expansion.
-🟡 Caution: Mixed reviews; recommended for increased oversight/monitoring.
-🔴 High Risk: Significant consumer complaints; candidates for audit or termination.
+  - 🟡 Caution: Mixed reviews; recommended for increased oversight/monitoring.
+  - 🔴 High Risk: Significant consumer complaints; candidates for audit or termination.
 
 Quantitative Scoring: Assigns a Sentiment Risk Score (-1.0 to 1.0) to every firm for objective comparison across the panel.
 
