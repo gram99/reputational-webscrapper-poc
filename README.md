@@ -4,9 +4,9 @@
 
 ## 🚀 Key Features
 
-* **Automated Risk Tiering:** Instantly categorizes law firms into three actionable buckets:
+- **Automated Risk Tiering:** Instantly categorizes law firms into three actionable buckets:
 
-*  🟢 Low Risk: High professional standards; candidates for volume expansion.
+  - 🟢 Low Risk: High professional standards; candidates for volume expansion.
 🟡 Caution: Mixed reviews; recommended for increased oversight/monitoring.
 🔴 High Risk: Significant consumer complaints; candidates for audit or termination.
 
