@@ -3,8 +3,6 @@
 **Author:** gram99  
 **Target Stakeholders:** Public Relations & Marketing, 1st Line Recovery Operations, 2nd Line Risk Strategy, Regulatory Governance  
 
----
-
 **📌 Project Overview:** This Proof of Concept (PoC) provides managers with a streamlined, automated dashboard to monitor the reputational risk of their legal vendor panels. By analyzing public sentiment and industry-specific red flags, this tool identifies which law firms protect the company's brand and those that may pose a contractual or reputational threat.
 
 ## 🚀 Key Features
