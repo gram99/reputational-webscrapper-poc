@@ -44,6 +44,9 @@
 
 4. **Review & Export:** Analyze the dashboard and download the full "Compliance Audit Report" for internal records.
 
+***Pre-populated Upload File:*** A pre-populated upload file may be found here: https://github.com/gram99/reputational-webscrapper-poc/blob/main/WebScrapeTest.csv
+
+
 ## 📈 Future Roadmap
 
 - **V2.0:** Integration with internal Bank Vendor Management (VMS) databases.
