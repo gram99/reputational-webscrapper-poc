@@ -51,7 +51,7 @@
 
 ## 📥 Pre-Populated Upload File:
 
-If you do not have a list of firms to populate the template, a pre-populated upload file that can be used to test the data upload function may be found here: https://github.com/gram99/reputational-webscrapper-poc/blob/main/WebScrapeTest.csv
+If you do not have a list of firms to populate the template, a pre-populated upload file that can be used to demonstrate the data upload function may be found here: https://github.com/gram99/reputational-webscrapper-poc/blob/main/WebScrapeTest.csv
 
 **To use the pre-populated file:** 
 
