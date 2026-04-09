@@ -81,6 +81,10 @@ If you do not have a list of firms to populate the template, a pre-populated upl
 
 ## Screen Shots
 
+
+<img width="1879" height="840" alt="Screenshot 2026-04-09 at 9 28 44 AM" src="https://github.com/user-attachments/assets/75cf9813-440f-4a41-a6e5-9e95236f31cc" />
+
+
 <img width="1896" height="801" alt="Screenshot 2026-04-08 at 9 02 06 PM" src="https://github.com/user-attachments/assets/4e5ba7d2-a4c1-41a7-83e1-e0a83e0fbc97" />
 
 
